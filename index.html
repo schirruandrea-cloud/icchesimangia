@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Icchè si Mangia?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1013; --ink:#F4F5F7; --soft:#9AA0AC;
+    --green1:#00E29A; --green2:#00B8D9;
+    --pink1:#FF5FA0; --pink2:#FF3D66;
+    --gold1:#FFD166; --gold2:#FF9F45;
+    --viola1:#8B7CF6; --viola2:#5B4FE0;
+    --glass:rgba(255,255,255,0.05);
+    --glass-2:rgba(255,255,255,0.08);
+    --glass-border:rgba(255,255,255,0.10);
+    --red1:#FF5F6D; --red2:#FF3D3D;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{ font-family:'Nunito', sans-serif; background:#000; color:var(--ink); display:flex; justify-content:center; min-height:100vh;}
+
+  .device{
+    width:390px; min-height:100vh; position:relative; overflow:hidden;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(0,226,154,0.16), transparent 45%),
+      radial-gradient(circle at 90% 15%, rgba(255,95,160,0.14), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(91,79,224,0.14), transparent 45%),
+      var(--bg);
+  }
+  @media (min-width:430px){
+    body{align-items:flex-start; padding:30px 0;}
+    .device{min-height:844px; height:844px; border-radius:36px; border:8px solid #050506; box-shadow:0 30px 70px rgba(0,0,0,0.6);}
+  }
+
+  .screen{ display:none; flex-direction:column; height:100%; min-height:100vh; }
+  @media (min-width:430px){ .screen{min-height:844px;} }
+  .screen.active{ display:flex; animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .scroll::-webkit-scrollbar{width:0;}
+  h1,h2,h3,h4{margin:0;} p{margin:0;}
+
+  .glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+
+  /* topbar */
+  .topbar{ display:flex; align-items:center; gap:10px; padding:20px 22px 8px 22px; }
+  .topbar .back{
+    width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:16px; cursor:pointer; flex:none;
+  }
+  .topbar .title{ font-weight:900; text-transform:uppercase; font-size:14px; letter-spacing:.01em; }
+
+  /* ================= HOME ================= */
+  .topzone{ padding:30px 22px 6px 22px; }
+  .toprow{ display:flex; align-items:center; justify-content:space-between; }
+  .brandtag{ font-size:10.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--soft); padding:6px 12px; border-radius:20px; }
+  .avatar{ width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--green1),var(--viola2)); }
+  .logo{ margin-top:20px; font-size:27px; font-weight:900; text-transform:uppercase; letter-spacing:-.01em; line-height:1.08; }
+  .logo .g{ background:linear-gradient(90deg,var(--green1),var(--green2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub{ margin-top:8px; font-size:12.5px; font-weight:700; color:var(--soft); }
+
+  .primary-stack{ padding:26px 22px 6px 22px; display:flex; flex-direction:column; gap:14px; }
+  .glow-tile{ position:relative; border-radius:22px; padding:22px; cursor:pointer; overflow:hidden; transition:transform .15s ease; }
+  .glow-tile:active{ transform:scale(0.97); }
+  .glow-tile::before{ content:''; position:absolute; inset:0; opacity:.16; z-index:0; }
+  .glow-tile.ctc::before{ background:linear-gradient(135deg,var(--green1),var(--green2)); }
+  .glow-tile.hvd::before{ background:linear-gradient(135deg,var(--pink1),var(--pink2)); }
+  .glow-tile .row{ position:relative; z-index:1; display:flex; align-items:center; gap:16px; }
+  .glow-tile .badge-ic{ width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; flex:none; overflow:hidden; }
+  .glow-tile .badge-ic svg{ width:80%; height:80%; }
+  .glow-tile.ctc .badge-ic{ background:linear-gradient(135deg,var(--green1),var(--green2)); box-shadow:0 0 26px rgba(0,226,154,0.55); }
+  .glow-tile.hvd .badge-ic{ background:linear-gradient(135deg,var(--pink1),var(--pink2)); box-shadow:0 0 26px rgba(255,95,160,0.5); }
+  .glow-tile .lbl{ font-weight:900; font-size:16.5px; text-transform:uppercase; letter-spacing:-.005em; }
+  .glow-tile .desc{ margin-top:3px; font-size:12px; font-weight:700; color:var(--soft); }
+
+  .sec-grid{ padding:24px 22px 6px 22px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .sec-tile{ border-radius:16px; padding:15px; cursor:pointer; position:relative; transition:transform .15s ease; }
+  .sec-tile:active{ transform:scale(0.96); }
+  .sec-tile .ic{ width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .sec-tile:nth-child(1) .ic{ background:linear-gradient(135deg,var(--gold1),var(--gold2)); }
+  .sec-tile:nth-child(2) .ic{ background:linear-gradient(135deg,var(--green1),var(--green2)); }
+  .sec-tile:nth-child(3) .ic{ background:linear-gradient(135deg,var(--viola1),var(--viola2)); }
+  .sec-tile:nth-child(4) .ic{ background:linear-gradient(135deg,var(--pink1),var(--pink2)); }
+  .sec-tile .lbl{ margin-top:11px; font-weight:800; font-size:11.5px; text-transform:uppercase; letter-spacing:.01em; }
+  .sec-badge{ position:absolute; top:12px; right:12px; background:var(--pink2); color:#fff; font-weight:900; font-size:10px; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(255,61,102,0.7); }
+
+  .waiting-glass{ margin:20px 22px 0 22px; border:1px solid rgba(255,209,102,0.35); border-radius:18px; padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+  .waiting-glass .ic{ font-size:19px; filter:drop-shadow(0 0 8px rgba(255,209,102,0.6)); }
+  .waiting-glass b{ display:block; font-size:12px; text-transform:uppercase; font-weight:900; color:var(--gold1); }
+  .waiting-glass span{ font-size:11px; color:var(--soft); font-weight:700; }
+
+  .mini-row{ padding:22px 22px 28px 22px; display:flex; gap:10px; }
+  .mini-btn{ flex:1; background:transparent; border:1px solid var(--glass-border); border-radius:14px; padding:11px; text-align:center; font-weight:800; font-size:11.5px; text-transform:uppercase; color:var(--soft); cursor:pointer; }
+
+  /* ================= FILTERS ================= */
+  .filters-hero{ margin:6px 22px 18px 22px; border-radius:20px; padding:18px; display:flex; align-items:center; gap:14px; position:relative; overflow:hidden; }
+  .filters-hero::before{ content:''; position:absolute; inset:0; opacity:.14; background:linear-gradient(135deg,var(--green1),var(--green2)); z-index:0; }
+  .filters-hero svg{ width:70px; height:70px; flex:none; position:relative; z-index:1; }
+  .filters-hero .ft{ font-weight:900; text-transform:uppercase; font-size:13.5px; position:relative; z-index:1; }
+  .filters-hero .fs{ font-weight:700; font-size:11px; color:var(--soft); margin-top:4px; position:relative; z-index:1; }
+
+  .filters-wrap{ padding:0 22px 30px 22px; }
+  .filter-block{ margin-top:22px; }
+  .fq{ font-size:12.5px; font-weight:900; text-transform:uppercase; margin-bottom:12px; letter-spacing:.02em; color:var(--soft); }
+  .fq small{ display:block; font-weight:700; text-transform:none; color:#6b7280; font-size:11px; margin-top:2px; letter-spacing:0; }
+
+  .piatto-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .chip-piatto{ border-radius:14px; padding:11px 4px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; font-size:9.5px; font-weight:800; text-transform:uppercase; color:var(--soft); }
+  .chip-piatto .e{ font-size:18px; }
+  .chip-piatto.sel{ background:linear-gradient(135deg,var(--green1),var(--green2)); color:#04231a; box-shadow:0 0 18px rgba(0,226,154,0.4); }
+
+  .diff-row{ display:flex; flex-direction:column; gap:8px; }
+  .chip-diff{ border-radius:14px; padding:13px 14px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+  .chip-diff.sel{ background:linear-gradient(135deg, rgba(0,226,154,0.25), rgba(0,184,217,0.2)); border-color:rgba(0,226,154,0.5); }
+  .chip-diff .e{ font-size:19px; }
+  .chip-diff .t{ font-weight:800; font-size:13px; text-transform:uppercase; }
+  .chip-diff .s{ font-weight:700; font-size:11px; color:var(--soft); margin-top:1px; }
+
+  .persone-row{ display:flex; gap:8px; }
+  .chip-persone{ flex:1; aspect-ratio:1; border-radius:16px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; cursor:pointer; transition:transform .12s ease; }
+  .chip-persone:active{ background:linear-gradient(135deg,var(--green1),var(--green2)); color:#04231a; transform:scale(0.93); box-shadow:0 0 20px rgba(0,226,154,0.5); }
+  .hint-tap{ text-align:center; font-size:11.5px; color:var(--soft); font-weight:600; margin-top:16px; }
+
+  /* ================= RESULTS ================= */
+  .search-counter{ margin:0 22px 14px 22px; display:flex; align-items:center; justify-content:space-between; }
+  .search-counter .cnt{ font-size:11.5px; font-weight:800; color:var(--green1); text-transform:uppercase; }
+  .results-list{ padding:0 22px 24px 22px; display:flex; flex-direction:column; gap:16px; }
+
+  .recipe-card{ border-radius:22px; overflow:hidden; position:relative; }
+  .recipe-card.verde{ box-shadow:0 0 0 1px rgba(0,226,154,0.35), 0 10px 30px -8px rgba(0,226,154,0.35); }
+  .recipe-card.arancio{ box-shadow:0 0 0 1px rgba(255,209,102,0.35), 0 10px 30px -8px rgba(255,209,102,0.3); }
+  .recipe-card.rosso{ box-shadow:0 0 0 1px rgba(255,61,61,0.35), 0 10px 30px -8px rgba(255,61,61,0.3); }
+  .recipe-img{ height:135px; position:relative; overflow:hidden; }
+  .recipe-img img{ width:100%; height:100%; object-fit:cover; display:block; filter:saturate(1.05); }
+  .fatt-ring{ position:absolute; top:10px; right:10px; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12.5px; backdrop-filter:blur(6px); border:1.5px solid rgba(255,255,255,0.5); }
+  .fatt-ring.verde{ background:rgba(0,226,154,0.85); color:#04231a; box-shadow:0 0 16px rgba(0,226,154,0.7); }
+  .fatt-ring.arancio{ background:rgba(255,209,102,0.9); color:#3a2600; box-shadow:0 0 16px rgba(255,209,102,0.6); }
+  .fatt-ring.rosso{ background:rgba(255,61,61,0.88); color:#fff; box-shadow:0 0 16px rgba(255,61,61,0.6); }
+
+  .recipe-body{ padding:14px 16px 16px 16px; }
+  .recipe-title{ font-weight:900; font-size:15px; text-transform:uppercase; letter-spacing:.005em; }
+  .recipe-meta{ display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .recipe-meta span{ font-size:11px; font-weight:700; color:var(--soft); }
+
+  .missing-list{ margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .missing-chip{ font-size:10px; font-weight:700; padding:5px 9px; border-radius:20px; background:rgba(255,255,255,0.06); color:var(--soft); border:1px solid var(--glass-border); }
+  .missing-chip.ind{ background:rgba(255,61,61,0.14); color:#ff9c9c; border-color:rgba(255,61,61,0.3); }
+  .missing-chip.sos{ background:rgba(0,226,154,0.12); color:#7CF3C7; border-color:rgba(0,226,154,0.3); }
+
+  .recipe-actions{ display:flex; gap:7px; margin-top:14px; }
+  .rbtn{ flex:1; border:none; border-radius:12px; padding:10px 4px; font-weight:800; font-size:10px; text-transform:uppercase; cursor:pointer; letter-spacing:.01em; }
+  .rbtn.vedi{ background:rgba(255,255,255,0.08); color:var(--ink); border:1px solid var(--glass-border); }
+  .rbtn.cucino{ background:linear-gradient(135deg,var(--green1),var(--green2)); color:#04231a; }
+  .rbtn.salva{ background:linear-gradient(135deg,var(--gold1),var(--gold2)); color:#3a2600; }
+
+  .btn-altre{ margin:4px 22px 0 22px; border-radius:16px; padding:14px; text-align:center; font-weight:800; font-size:12.5px; text-transform:uppercase; color:var(--soft); cursor:pointer; border:1px dashed var(--glass-border); }
+  .cipenso-banner{ margin:16px 22px 0 22px; border-radius:20px; padding:18px; cursor:pointer; display:flex; align-items:center; gap:12px; position:relative; overflow:hidden; }
+  .cipenso-banner::before{ content:''; position:absolute; inset:0; opacity:.18; background:linear-gradient(135deg,var(--viola1),var(--viola2)); z-index:0; }
+  .cipenso-banner .ic{ font-size:24px; position:relative; z-index:1; }
+  .cipenso-banner b{ display:block; font-size:13px; text-transform:uppercase; font-weight:900; position:relative; z-index:1; }
+  .cipenso-banner span{ font-size:11px; color:var(--soft); font-weight:700; position:relative; z-index:1; }
+
+  /* ================= DETAIL ================= */
+  .detail-hero{ height:220px; position:relative; overflow:hidden; }
+  .detail-hero img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .detail-hero::after{ content:''; position:absolute; inset:0; background:linear-gradient(0deg, var(--bg) 0%, transparent 45%); }
+  .detail-back{ position:absolute; top:18px; left:18px; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; cursor:pointer; z-index:3; }
+  .detail-body{ padding:14px 22px 110px 22px; position:relative; margin-top:-30px; z-index:2; }
+  .detail-title{ font-size:20px; font-weight:900; text-transform:uppercase; }
+  .tag-stamp{ display:inline-flex; align-items:center; gap:6px; font-weight:800; text-transform:uppercase; font-size:10.5px; letter-spacing:.03em; padding:5px 10px; border-radius:20px; color:var(--soft); }
+
+  .fatt-bar-wrap{ margin-top:16px; }
+  .fatt-bar-label{ display:flex; justify-content:space-between; font-size:11.5px; font-weight:800; color:var(--soft); text-transform:uppercase; margin-bottom:6px; }
+  .fatt-bar-label b{ font-size:15px; }
+  .fatt-bar-bg{ height:10px; border-radius:8px; overflow:hidden; background:rgba(255,255,255,0.08); }
+  .fatt-bar-fill{ height:100%; border-radius:8px; transition:width .5s ease; }
+
+  .detail-meta-row{ display:flex; gap:10px; margin-top:16px; }
+  .meta-pill{ flex:1; border-radius:14px; padding:10px; text-align:center; }
+  .meta-pill .v{ font-weight:900; font-size:14px; }
+  .meta-pill .k{ font-size:10px; color:var(--soft); font-weight:700; text-transform:uppercase; margin-top:2px; }
+
+  .section-lbl{ margin-top:24px; margin-bottom:10px; font-size:12.5px; font-weight:900; text-transform:uppercase; letter-spacing:.02em; color:var(--soft); }
+  .ingredient-row{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .ingredient-row .status{ font-size:16px; width:22px; text-align:center; }
+  .ingredient-row .nm{ flex:1; font-weight:700; font-size:13.5px; }
+  .ingredient-row .tag{ font-size:9px; font-weight:800; text-transform:uppercase; padding:3px 7px; border-radius:8px; }
+  .ingredient-row .tag.ind{ background:rgba(255,61,61,0.14); color:#ff9c9c; }
+  .ingredient-row .tag.sos{ background:rgba(0,226,154,0.12); color:#7CF3C7; }
+
+  .step-row{ display:flex; gap:12px; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.07); align-items:flex-start; }
+  .step-num{ width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,var(--green1),var(--green2)); color:#04231a; font-weight:900; font-size:12px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .step-txt{ font-size:13.5px; font-weight:600; line-height:1.5; padding-top:3px; color:#d7dae0; }
+
+  .detail-cta-bar{ position:sticky; bottom:0; background:linear-gradient(0deg, var(--bg) 60%, transparent); padding:16px 22px 20px 22px; display:flex; gap:8px; }
+  .cta-main{ flex:2; background:linear-gradient(135deg,var(--green1),var(--green2)); color:#04231a; border:none; border-radius:16px; padding:15px; font-weight:900; font-size:13px; text-transform:uppercase; cursor:pointer; box-shadow:0 0 24px rgba(0,226,154,0.4); }
+  .cta-side{ flex:1; border-radius:16px; padding:15px 8px; font-weight:800; font-size:11px; text-transform:uppercase; cursor:pointer; color:var(--ink); }
+
+  /* ================= CI PENSO IO ================= */
+  .cpi-list{ padding:6px 12px 8px 22px; display:flex; }
+  .cpi-items{ flex:1; padding-right:6px; }
+  .cpi-cat{ font-size:10.5px; font-weight:900; text-transform:uppercase; color:var(--viola1); margin:14px 0 8px 2px; letter-spacing:.03em; }
+  .cpi-item{ display:flex; align-items:center; gap:10px; padding:11px 10px; border-radius:12px; cursor:pointer; margin-bottom:3px; }
+  .cpi-item .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.15); flex:none; }
+  .cpi-item .nm{ font-weight:700; font-size:13.5px; }
+  .cpi-item.picked{ background:linear-gradient(135deg, rgba(139,124,246,0.2), rgba(91,79,224,0.14)); }
+  .cpi-item.picked .dot{ background:var(--viola1); box-shadow:0 0 8px rgba(139,124,246,0.8); }
+  .cpi-item.picked .nm{ color:#c9c1ff; }
+  .cpi-index{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; width:16px; padding-top:8px; }
+  .cpi-index span{ font-size:8.5px; font-weight:800; color:#5b6068; }
+
+  .cpi-selected-wrap{ border-top:1px solid var(--glass-border); max-height:38%; display:flex; flex-direction:column; }
+  .cpi-selected-head{ padding:12px 22px 6px 22px; font-size:11px; font-weight:900; text-transform:uppercase; color:var(--soft); display:flex; justify-content:space-between; align-items:center; }
+  .cpi-selected-scroll{ overflow-y:auto; padding:0 22px; flex:1; }
+  .cpi-sel-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+  .cpi-sel-row .nm{ flex:1; font-weight:700; font-size:13px; }
+  .seg{ display:flex; background:rgba(255,255,255,0.06); border-radius:10px; padding:2px; }
+  .seg button{ border:none; background:transparent; font-size:10px; font-weight:800; text-transform:uppercase; padding:6px 9px; border-radius:8px; cursor:pointer; color:var(--soft); }
+  .seg button.on{ background:var(--viola1); color:#0d0a1f; }
+  .cpi-sel-row .rm{ width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.08); border:none; font-weight:800; cursor:pointer; color:var(--soft); flex:none; }
+  .cpi-save{ margin:12px 22px 18px 22px; background:linear-gradient(135deg,var(--viola1),var(--viola2)); border:none; color:#fff; border-radius:16px; padding:15px; font-weight:900; font-size:13px; text-transform:uppercase; cursor:pointer; box-shadow:0 0 24px rgba(91,79,224,0.4); }
+  .cpi-empty{ font-size:12px; color:var(--soft); font-weight:600; padding:8px 0 4px 0; }
+
+  .toast{ position:absolute; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:rgba(20,22,26,0.95); color:#fff; padding:12px 20px; border-radius:30px; font-weight:700; font-size:12.5px; border:1px solid var(--glass-border); opacity:0; pointer-events:none; transition:.25s ease; white-space:nowrap; z-index:50; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="device" id="device">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen active" id="screen-home">
+    <div class="scroll">
+      <div class="topzone">
+        <div class="toprow"><span class="brandtag glass">Icchè si Mangia?</span><div class="avatar"></div></div>
+        <div class="logo">Cosa <span class="g">mangi</span><br>oggi?</div>
+        <div class="sub">decidi cosa cucinare in 10 secondi</div>
+      </div>
+
+      <div class="primary-stack">
+        <div class="glow-tile ctc glass" onclick="startFlow('ctc')">
+          <div class="row"><span class="badge-ic" id="iconFridgeHome"></span>
+            <span><span class="lbl">Con quello che c'è</span><div class="desc">cucina con la dispensa attuale</div></span>
+          </div>
+        </div>
+        <div class="glow-tile hvd glass" onclick="startFlow('hvd')">
+          <div class="row"><span class="badge-ic" id="iconChefHome"></span>
+            <span><span class="lbl">Ho voglia di…</span><div class="desc">cerca qualcosa di specifico</div></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-grid">
+        <div class="sec-tile glass" onclick="toast('apro Lista Spesa')"><div class="ic">📝</div><div class="lbl">Lista Spesa</div></div>
+        <div class="sec-tile glass" onclick="toast('apro In Negozio')"><div class="ic">🛒</div><div class="lbl">In Negozio</div></div>
+        <div class="sec-tile glass" onclick="toast('apro La Mia Dispensa')"><div class="ic">🗄️</div><div class="lbl">La Mia Dispensa</div></div>
+        <div class="sec-tile glass" onclick="toast('apro In Attesa / Preferiti')"><span class="sec-badge">2</span><div class="ic">⭐</div><div class="lbl">In Attesa / Preferiti</div></div>
+      </div>
+
+      <div class="waiting-glass glass" onclick="toast('apro la ricetta in attesa')">
+        <span class="ic">🍲</span>
+        <div><b>Ricetta in attesa</b><span>fai la spesa per poterla cucinare</span></div>
+      </div>
+
+      <div class="mini-row">
+        <button class="mini-btn" onclick="toast('guida rapida')">📖 Guida</button>
+        <button class="mini-btn" onclick="toast('impostazioni')">⚙️ Impostazioni</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FILTRI ============ -->
+  <section class="screen" id="screen-filters">
+    <div class="topbar">
+      <div class="back glass" onclick="goto('screen-home')">←</div>
+      <div class="title" id="filtersTitle">Con quello che c'è</div>
+    </div>
+    <div class="scroll">
+      <div class="filters-hero glass" id="filtersHero"></div>
+      <div class="filters-wrap">
+        <div class="filter-block">
+          <div class="fq">Che piatto?</div>
+          <div class="piatto-grid" id="piattoGrid"></div>
+        </div>
+        <div class="filter-block">
+          <div class="fq">Difficoltà</div>
+          <div class="diff-row" id="diffRow"></div>
+        </div>
+        <div class="filter-block">
+          <div class="fq">Quante persone?<small>tocca un numero per avviare subito la ricerca</small></div>
+          <div class="persone-row" id="personeRow"></div>
+        </div>
+        <div class="hint-tap">nessun pulsante avanti — la ricerca parte al tocco</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RISULTATI ============ -->
+  <section class="screen" id="screen-results">
+    <div class="topbar">
+      <div class="back glass" onclick="goto('screen-filters')">←</div>
+      <div class="title">Ricette per te</div>
+    </div>
+    <div class="scroll">
+      <div class="search-counter">
+        <span class="cnt" id="searchCounter">Ricerca 1 di 3</span>
+        <span class="cnt" id="filterSummary" style="color:var(--soft)"></span>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+      <button class="btn-altre" id="btnAltre" onclick="altreRicette()">🔄 Altre 3 ricette</button>
+      <div class="cipenso-banner glass" id="cipensoBanner" style="display:none" onclick="goto('screen-cipenso')">
+        <span class="ic">🤔</span><span><b>Ci penso io</b><span>scegli tu i prodotti dalla dispensa</span></span>
+      </div>
+      <div style="height:20px"></div>
+    </div>
+  </section>
+
+  <!-- ============ DETTAGLIO ============ -->
+  <section class="screen" id="screen-detail">
+    <div class="scroll">
+      <div class="detail-hero" id="detailHeroWrap">
+        <div class="detail-back glass" onclick="goto('screen-results')">←</div>
+        <div id="detailHero"></div>
+      </div>
+      <div class="detail-body">
+        <div class="tag-stamp glass" id="detailBadgeCat">primo · con quello che c'è</div>
+        <div class="detail-title" id="detailTitle" style="margin-top:10px;">—</div>
+        <div class="fatt-bar-wrap">
+          <div class="fatt-bar-label"><span>fattibilità</span><b id="detailPct">—</b></div>
+          <div class="fatt-bar-bg"><div class="fatt-bar-fill" id="detailBar"></div></div>
+        </div>
+        <div class="detail-meta-row">
+          <div class="meta-pill glass"><div class="v" id="detailTime">—</div><div class="k">tempo</div></div>
+          <div class="meta-pill glass"><div class="v" id="detailDiff">—</div><div class="k">difficoltà</div></div>
+          <div class="meta-pill glass"><div class="v" id="detailPers">—</div><div class="k">persone</div></div>
+        </div>
+        <div class="section-lbl">Ingredienti</div>
+        <div id="detailIngredients"></div>
+        <div class="section-lbl">Preparazione</div>
+        <div id="detailSteps"></div>
+      </div>
+    </div>
+    <div class="detail-cta-bar">
+      <button class="cta-main" onclick="toast('dispensa aggiornata! buon appetito 🍽️')">🍳 Cucino Questo!</button>
+      <button class="cta-side glass" onclick="toast('salvata in attesa ⭐')">⭐ Salva</button>
+    </div>
+  </section>
+
+  <!-- ============ CI PENSO IO ============ -->
+  <section class="screen" id="screen-cipenso">
+    <div class="topbar">
+      <div class="back glass" onclick="goto('screen-results')">←</div>
+      <div class="title">Ci penso io</div>
+    </div>
+    <div class="scroll" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+      <div class="cpi-list" style="flex:1; min-height:0; overflow-y:auto;" id="cpiListWrap"></div>
+    </div>
+    <div class="cpi-selected-wrap glass">
+      <div class="cpi-selected-head"><span>selezionati</span><span id="cpiCount">0</span></div>
+      <div class="cpi-selected-scroll" id="cpiSelectedScroll"><div class="cpi-empty">tocca i prodotti sopra per aggiungerli qui</div></div>
+      <button class="cpi-save" onclick="toast('salvato in attesa di essere cucinato ⭐')">⭐ Salva in attesa di essere cucinato</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ---------------- ILLUSTRAZIONI SVG ---------------- */
+const SVG_FRIDGE = `<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <rect x="18" y="14" width="104" height="176" rx="18" fill="#fff" opacity="0.95" stroke="#04231a" stroke-width="5"/>
+  <rect x="128" y="26" width="66" height="152" rx="14" fill="#DBF1E1" stroke="#04231a" stroke-width="5"/>
+  <line x1="138" y1="78" x2="184" y2="78" stroke="#04231a" stroke-width="4" stroke-linecap="round"/>
+  <line x1="138" y1="128" x2="184" y2="128" stroke="#04231a" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="150" cy="58" r="10" fill="#FF5F6D"/><circle cx="172" cy="58" r="10" fill="#FFD166"/>
+  <rect x="142" y="94" width="26" height="18" rx="5" fill="#00B8D9"/>
+  <rect x="24" y="92" width="7" height="26" rx="3.5" fill="#04231a"/>
+  <circle cx="70" cy="172" r="19" fill="#00E29A"/>
+  <rect x="48" y="188" width="44" height="46" rx="18" fill="#04231a"/>
+  <circle cx="63" cy="169" r="3" fill="#fff"/><circle cx="77" cy="169" r="3" fill="#fff"/>
+  <path d="M62 179 Q70 184 78 179" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>`;
+const SVG_CHEF = `<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <rect x="70" y="140" width="80" height="72" rx="26" fill="#3a0d22"/>
+  <circle cx="110" cy="118" r="36" fill="#FFC28A"/>
+  <rect x="80" y="92" width="60" height="18" rx="9" fill="#fff" stroke="#3a0d22" stroke-width="4"/>
+  <circle cx="90" cy="76" r="17" fill="#fff" stroke="#3a0d22" stroke-width="4"/>
+  <circle cx="112" cy="66" r="21" fill="#fff" stroke="#3a0d22" stroke-width="4"/>
+  <circle cx="134" cy="76" r="17" fill="#fff" stroke="#3a0d22" stroke-width="4"/>
+  <circle cx="100" cy="120" r="3.4" fill="#3a2412"/><circle cx="122" cy="120" r="3.4" fill="#3a2412"/>
+  <path d="M99 131 Q111 138 123 131" stroke="#3a2412" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="199" cy="34" r="23" fill="#FF3D66" stroke="#3a0d22" stroke-width="4"/>
+  <text x="199" y="43" font-size="26" font-weight="900" text-anchor="middle" fill="#fff" font-family="Nunito, sans-serif">?</text>
+</svg>`;
+
+/* ---------------- DATA ---------------- */
+const PIATTI = [
+  {k:'antipasto', e:'🥗', l:'Antipasto'}, {k:'primo', e:'🍝', l:'Primo'},
+  {k:'secondo', e:'🍖', l:'Secondo'}, {k:'verdure', e:'🥦', l:'Verdure'},
+  {k:'dolce', e:'🍰', l:'Dolce'}, {k:'unico', e:'🍲', l:'Piatto Unico'},
+  {k:'contorno', e:'🥕', l:'Contorno'}, {k:'sorpresa', e:'🎲', l:'Sorprendimi'}
+];
+const DIFF = [
+  {k:'casalinga', e:'👩‍🍳', l:'Casalinga', s:'max 20 min'},
+  {k:'cuoco', e:'🍳', l:'Cuoco', s:'20–45 min'},
+  {k:'chef', e:'⭐', l:'Chef', s:'45+ min'}
+];
+const PERSONE = [1,2,3,4,6];
+const PANTRY = ['Aglio','Basilico','Burro','Cipolla','Farina','Latte','Mozzarella','Olio EVO','Parmigiano Reggiano','Passata di pomodoro','Pepe nero','Peperoncino','Pollo','Pancetta','Prezzemolo','Riso','Sale','Spaghetti','Uova','Zucchine'].sort();
+
+function pctColor(p){ return p>=85?'verde': p>=50?'arancio':'rosso'; }
+function pctColorHex(p){ return p>=85?'#00E29A': p>=50?'#FFD166':'#FF3D3D'; }
+
+const BATCH1 = [
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Frittata.jpg', title:'Frittata di Zucchine', pct:92, time:'15 min', diff:'Casalinga', pers:2,
+    steps:['Lava e taglia le zucchine a rondelle sottili.','Sbatti le uova con parmigiano, sale e pepe.','Rosola le zucchine in padella con un filo d\'olio.','Versa le uova sulle zucchine e cuoci a fuoco basso 8-10 minuti.','Gira la frittata e cuoci ancora 3-4 minuti. Servi calda.'],
+    ingredients:[{n:'Uova', t:'ind', have:true}, {n:'Zucchine', t:'ind', have:true}, {n:'Parmigiano Reggiano', t:'ind', have:true}, {n:'Olio EVO', t:'sos', have:true}, {n:'Sale', t:'sos', have:true}, {n:'Pepe nero', t:'sos', have:false}]
+  },
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Risotto%20ai%20funghi%20porcini.JPG', title:'Risotto ai Funghi', pct:64, time:'35 min', diff:'Cuoco', pers:2,
+    steps:['Tosta il riso a secco per 2 minuti.','Sfuma con vino bianco e lascia evaporare.','Aggiungi brodo caldo un mestolo alla volta, mescolando.','A metà cottura unisci i funghi trifolati.','Manteca con burro e parmigiano fuori dal fuoco.'],
+    ingredients:[{n:'Riso', t:'ind', have:true}, {n:'Funghi', t:'ind', have:false}, {n:'Parmigiano Reggiano', t:'ind', have:true}, {n:'Burro', t:'ind', have:true}, {n:'Cipolla', t:'sos', have:true}, {n:'Vino bianco', t:'sos', have:false}]
+  },
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Spaghetti%20alle%20vongole.jpg', title:'Pasta alle Vongole', pct:29, time:'25 min', diff:'Cuoco', pers:2,
+    steps:['Spurga le vongole in acqua e sale per un\'ora.','Fai aprire le vongole in padella con aglio e olio.','Cuoci gli spaghetti al dente in acqua salata.','Manteca la pasta con le vongole e il loro sughetto.','Spolvera con prezzemolo fresco tritato e servi.'],
+    ingredients:[{n:'Spaghetti', t:'ind', have:true}, {n:'Vongole', t:'ind', have:false}, {n:'Aglio', t:'ind', have:true}, {n:'Prezzemolo', t:'ind', have:false}, {n:'Vino bianco', t:'sos', have:false}, {n:'Peperoncino', t:'sos', have:true}]
+  }
+];
+const BATCH2 = [
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Pasta%20e%20fagioli%20cannellini.jpg', title:'Pasta e Fagioli', pct:88, time:'30 min', diff:'Cuoco', pers:4,
+    steps:['Soffriggi cipolla e aglio in olio.','Aggiungi i fagioli e un po\' di acqua o brodo.','Fai sobbollire 15 minuti schiacciandone una parte.','Cuoci la pasta direttamente nel sugo.','Servi con un filo d\'olio a crudo e pepe.'],
+    ingredients:[{n:'Fagioli', t:'ind', have:true}, {n:'Pasta corta', t:'ind', have:true}, {n:'Cipolla', t:'ind', have:true}, {n:'Aglio', t:'sos', have:true}, {n:'Olio EVO', t:'sos', have:true}]
+  },
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Pancakes.jpg', title:'Pancake Salati', pct:55, time:'20 min', diff:'Casalinga', pers:2,
+    steps:['Mescola farina, uova e latte fino a ottenere una pastella liscia.','Lascia riposare 10 minuti.','Cuoci piccole porzioni in padella antiaderente.','Gira quando compaiono le bollicine in superficie.','Farcisci a piacere e servi tiepidi.'],
+    ingredients:[{n:'Farina', t:'ind', have:true}, {n:'Uova', t:'ind', have:true}, {n:'Latte', t:'ind', have:false}, {n:'Sale', t:'sos', have:true}, {n:'Burro', t:'sos', have:false}]
+  },
+  { img:'https://commons.wikimedia.org/wiki/Special:FilePath/Chicken%20curry.jpg', title:'Pollo al Curry', pct:41, time:'30 min', diff:'Cuoco', pers:3,
+    steps:['Taglia il pollo a bocconcini e rosolalo.','Aggiungi cipolla tritata e falla appassire.','Unisci curry in polvere e un po\' di panna o latte.','Fai cuocere coperto per 15 minuti.','Servi con riso bianco.'],
+    ingredients:[{n:'Pollo', t:'ind', have:true}, {n:'Curry in polvere', t:'ind', have:false}, {n:'Panna', t:'ind', have:false}, {n:'Cipolla', t:'sos', have:true}, {n:'Riso', t:'sos', have:true}]
+  }
+];
+
+/* ---------------- STATE ---------------- */
+let selPiatto=null, selDiff=null, searchCount=0, currentBatch=[];
+let cpiSelected = [];
+
+/* ---------------- NAV ---------------- */
+function goto(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const scr = document.getElementById(id).querySelector('.scroll');
+  if(scr) scr.scrollTop = 0;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function startFlow(type){
+  if(type === 'hvd'){ toast('percorso "Ho voglia di…" arriva nel prossimo giro 💗'); return; }
+  selPiatto=null; selDiff=null;
+  document.getElementById('filtersTitle').textContent = "Con quello che c'è";
+  const hero = document.getElementById('filtersHero');
+  hero.innerHTML = SVG_FRIDGE + `<div><div class="ft">Guardiamo cosa c'è in frigo 🧊</div><div class="fs">niente sprechi, si parte da quello che hai già</div></div>`;
+  renderPiatti(); renderDiff(); renderPersone();
+  goto('screen-filters');
+}
+document.getElementById('iconFridgeHome').innerHTML = SVG_FRIDGE;
+document.getElementById('iconChefHome').innerHTML = SVG_CHEF;
+
+/* ---------------- FILTERS ---------------- */
+function renderPiatti(){
+  document.getElementById('piattoGrid').innerHTML = PIATTI.map(p=>`
+    <div class="chip-piatto glass ${selPiatto===p.k?'sel':''}" onclick="pickPiatto('${p.k}')"><span class="e">${p.e}</span>${p.l}</div>`).join('');
+}
+function pickPiatto(k){ selPiatto=k; renderPiatti(); }
+function renderDiff(){
+  document.getElementById('diffRow').innerHTML = DIFF.map(d=>`
+    <div class="chip-diff glass ${selDiff===d.k?'sel':''}" onclick="pickDiff('${d.k}')">
+      <span class="e">${d.e}</span><div><div class="t">${d.l}</div><div class="s">${d.s}</div></div>
+    </div>`).join('');
+}
+function pickDiff(k){ selDiff=k; renderDiff(); }
+function renderPersone(){
+  document.getElementById('personeRow').innerHTML = PERSONE.map(n=>`<div class="chip-persone glass" onclick="avviaRicerca(${n})">${n}</div>`).join('');
+}
+function avviaRicerca(n){
+  searchCount = 1; currentBatch = BATCH1;
+  document.getElementById('filterSummary').textContent = `${n} persone`;
+  renderResults();
+  goto('screen-results');
+}
+
+/* ---------------- RESULTS ---------------- */
+function renderResults(){
+  document.getElementById('searchCounter').textContent = `Ricerca ${searchCount} di 3`;
+  document.getElementById('resultsList').innerHTML = currentBatch.map((r,i)=>{
+    const missing = r.ingredients.filter(ing=>!ing.have);
+    const col = pctColor(r.pct);
+    return `
+    <div class="recipe-card glass ${col}">
+      <div class="recipe-img"><img src="${r.img}" alt="${r.title}" loading="lazy"><div class="fatt-ring ${col}">${r.pct}%</div></div>
+      <div class="recipe-body">
+        <div class="recipe-title">${r.title}</div>
+        <div class="recipe-meta"><span>⏱ ${r.time}</span><span>📶 ${r.diff}</span><span>👥 ${r.pers}</span></div>
+        ${missing.length? `<div class="missing-list">${missing.map(m=>`<span class="missing-chip ${m.t}">${m.t==='ind'?'🔒':'🔄'} ${m.n}</span>`).join('')}</div>` : `<div class="missing-list"><span class="missing-chip sos">✅ hai tutto</span></div>`}
+        <div class="recipe-actions">
+          <button class="rbtn vedi" onclick="openDetail(${i})">Vedi Ricetta</button>
+          <button class="rbtn cucino" onclick="toast('dispensa aggiornata! buon appetito 🍽️')">🍳 Cucino</button>
+          <button class="rbtn salva" onclick="toast('salvata in attesa ⭐')">⭐ Salva</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('btnAltre').style.display = searchCount<3 ? 'block' : 'none';
+  document.getElementById('cipensoBanner').style.display = searchCount>=3 ? 'flex' : 'none';
+}
+function altreRicette(){
+  searchCount++;
+  currentBatch = searchCount===2 ? BATCH2 : BATCH1;
+  renderResults();
+  document.getElementById('screen-results').querySelector('.scroll').scrollTop = 0;
+}
+
+/* ---------------- DETAIL ---------------- */
+function openDetail(i){
+  const r = currentBatch[i];
+  document.getElementById('detailHero').innerHTML = `<img src="${r.img}" alt="${r.title}">`;
+  document.getElementById('detailTitle').textContent = r.title;
+  document.getElementById('detailPct').textContent = r.pct+'%';
+  document.getElementById('detailPct').style.color = pctColorHex(r.pct);
+  const bar = document.getElementById('detailBar');
+  bar.style.width = r.pct+'%'; bar.style.background = pctColorHex(r.pct);
+  bar.style.boxShadow = `0 0 14px ${pctColorHex(r.pct)}`;
+  document.getElementById('detailTime').textContent = r.time;
+  document.getElementById('detailDiff').textContent = r.diff;
+  document.getElementById('detailPers').textContent = r.pers;
+  document.getElementById('detailIngredients').innerHTML = r.ingredients.map(ing=>`
+    <div class="ingredient-row"><span class="status">${ing.have?'✅':(ing.t==='ind'?'🔒':'🔄')}</span><span class="nm">${ing.n}</span><span class="tag ${ing.t}">${ing.t==='ind'?'indispensabile':'sostituibile'}</span></div>`).join('');
+  document.getElementById('detailSteps').innerHTML = r.steps.map((s,idx)=>`
+    <div class="step-row"><div class="step-num">${idx+1}</div><div class="step-txt">${s}</div></div>`).join('');
+  goto('screen-detail');
+}
+
+/* ---------------- CI PENSO IO ---------------- */
+function renderCpiList(){
+  const wrap = document.getElementById('cpiListWrap');
+  const grouped = {};
+  PANTRY.forEach(p=>{ const l = p[0].toUpperCase(); (grouped[l]=grouped[l]||[]).push(p); });
+  const letters = Object.keys(grouped).sort();
+  let itemsHtml = '<div class="cpi-items">';
+  letters.forEach(letter=>{
+    itemsHtml += `<div class="cpi-cat" id="cat-${letter}">${letter}</div>`;
+    grouped[letter].forEach(name=>{
+      const picked = cpiSelected.find(s=>s.name===name);
+      itemsHtml += `<div class="cpi-item ${picked?'picked':''}" onclick="toggleCpi('${name.replace(/'/g,"\\'")}')"><span class="dot"></span><span class="nm">${name}</span></div>`;
+    });
+  });
+  itemsHtml += '</div>';
+  const indexHtml = `<div class="cpi-index">${letters.map(l=>`<span onclick="document.getElementById('cat-${l}').scrollIntoView({block:'start'})">${l}</span>`).join('')}</div>`;
+  wrap.innerHTML = itemsHtml + indexHtml;
+}
+function toggleCpi(name){
+  const idx = cpiSelected.findIndex(s=>s.name===name);
+  if(idx>=0){ cpiSelected.splice(idx,1); } else { cpiSelected.push({name, mode:'tutto'}); }
+  renderCpiList(); renderCpiSelected();
+}
+function removeCpi(name){ cpiSelected = cpiSelected.filter(s=>s.name!==name); renderCpiList(); renderCpiSelected(); }
+function setCpiMode(name, mode){ const item = cpiSelected.find(s=>s.name===name); if(item) item.mode = mode; renderCpiSelected(); }
+function renderCpiSelected(){
+  document.getElementById('cpiCount').textContent = cpiSelected.length;
+  const scroll = document.getElementById('cpiSelectedScroll');
+  if(cpiSelected.length===0){ scroll.innerHTML = '<div class="cpi-empty">tocca i prodotti sopra per aggiungerli qui</div>'; return; }
+  scroll.innerHTML = cpiSelected.map(s=>`
+    <div class="cpi-sel-row">
+      <span class="nm">${s.name}</span>
+      <div class="seg">
+        <button class="${s.mode==='tutto'?'on':''}" onclick="setCpiMode('${s.name.replace(/'/g,"\\'")}','tutto')">Tutto</button>
+        <button class="${s.mode==='parziale'?'on':''}" onclick="setCpiMode('${s.name.replace(/'/g,"\\'")}','parziale')">Parziale</button>
+      </div>
+      <button class="rm" onclick="removeCpi('${s.name.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('');
+}
+renderCpiList(); renderCpiSelected();
+</script>
+</body>
+</html>
