@@ -394,6 +394,7 @@
       <div class="detail-body">
         <div class="tag-stamp glass" id="detailBadgeCat">—</div>
         <div class="detail-title" id="detailTitle" style="margin-top:10px;">—</div>
+        <div id="detailSourceLink" style="margin-top:8px;"></div>
         <div class="fatt-bar-wrap">
           <div class="fatt-bar-label"><span>fattibilità</span><b id="detailPct">—</b></div>
           <div class="fatt-bar-bg"><div class="fatt-bar-fill" id="detailBar"></div></div>
@@ -609,6 +610,80 @@ const CATALOG = [
 const CATALOG_NAMES = new Set(CATALOG.map(p=>p.n));
 function catOf(name){ const f = CATALOG.find(p=>p.n===name); return f ? f.c : 'Altro'; }
 
+/* ================= THEMEALDB — ricerca reale da internet ================= */
+const MEALDB_BASE = 'https://www.themealdb.com/api/json/v1/1/';
+// Mappa "che piatto" (italiano) -> categoria TheMealDB (inglese). null = gestito a parte.
+const MEALDB_CATEGORY_MAP = {
+  antipasto: 'Starter', primo: 'Pasta', secondo: null, verdure: 'Vegetarian',
+  dolce: 'Dessert', unico: 'Miscellaneous', contorno: 'Side', sorpresa: null
+};
+const MEALDB_MEAT_CATS = ['Chicken','Beef','Pork','Lamb','Seafood','Goat'];
+// Parole che classifichiamo sempre come "sostituibile" (condimenti/base), a prescindere dalla posizione.
+const SEASONING_WORDS = ['salt','pepper','water','sugar','oil'];
+// Dizionario IT (nome catalogo) -> parole chiave EN, per riconoscere gli ingredienti reali (in inglese) nella dispensa italiana.
+const PANTRY_EN = {
+  'Pollo':['chicken'], 'Macinato di manzo':['beef mince','ground beef','minced beef'], 'Prosciutto crudo':['prosciutto','ham'], 'Pancetta':['bacon','pancetta'],
+  'Tonno in scatola':['tuna'], 'Vongole':['clam'],
+  'Parmigiano Reggiano':['parmesan','parmigiano'], 'Mozzarella':['mozzarella'], 'Uova':['egg'], 'Burro':['butter'], 'Latte':['milk'],
+  'Pomodori':['tomato'], 'Cipolla':['onion'], 'Aglio':['garlic'], 'Zucchine':['zucchini','courgette'], 'Basilico':['basil'], 'Funghi':['mushroom'], 'Prezzemolo':['parsley'],
+  'Passata di pomodoro':['passata','tomato puree','tomato sauce','chopped tomato'], 'Fagioli':['beans'],
+  'Spaghetti':['spaghetti'], 'Riso':['rice'], 'Farina':['flour'], 'Pasta corta':['pasta','penne','fusilli','macaroni'],
+  'Olio EVO':['olive oil','oil'], 'Sale':['salt'], 'Pepe nero':['pepper'], 'Peperoncino':['chilli','chili','pepper flakes'], 'Curry in polvere':['curry'],
+  'Pane':['bread']
+};
+function haveIngredientEN(name){
+  const lname = name.toLowerCase();
+  return Object.entries(PANTRY_EN).some(([itName, kws])=> STATE.pantry[itName] && kws.some(k=>lname.includes(k)));
+}
+function ingredientAvailable(ing){
+  return ing.lang==='en' ? haveIngredientEN(ing.n) : haveIngredient(ing.n);
+}
+async function mealDbFetch(path){
+  const res = await fetch(MEALDB_BASE + path);
+  if(!res.ok) throw new Error('mealdb http '+res.status);
+  return res.json();
+}
+async function mealDbFilterByCategory(cat){ const d = await mealDbFetch('filter.php?c='+encodeURIComponent(cat)); return d.meals||[]; }
+async function mealDbLookup(id){ const d = await mealDbFetch('lookup.php?i='+encodeURIComponent(id)); return d.meals ? d.meals[0] : null; }
+async function mealDbRandom(){ const d = await mealDbFetch('random.php'); return d.meals ? d.meals[0] : null; }
+async function mealDbSearchByName(name){ const d = await mealDbFetch('search.php?s='+encodeURIComponent(name)); return d.meals||[]; }
+
+function classifyMealIngredients(meal){
+  const raw = [];
+  for(let i=1;i<=20;i++){
+    const n = meal['strIngredient'+i];
+    if(n && n.trim()) raw.push(n.trim());
+  }
+  const nonSeason = raw.filter(n=> !SEASONING_WORDS.some(w=>n.toLowerCase().includes(w)));
+  const season = raw.filter(n=> SEASONING_WORDS.some(w=>n.toLowerCase().includes(w)));
+  return [
+    ...nonSeason.map((n,i)=>({ n, t: i<4 ? 'ind':'sos', lang:'en' })),
+    ...season.map(n=>({ n, t:'sos', lang:'en' }))
+  ];
+}
+function estimateDifficulty(ingredientCount){
+  if(ingredientCount<=6) return 'Casalinga';
+  if(ingredientCount<=10) return 'Cuoco';
+  return 'Chef';
+}
+function estimateTime(diff){ return diff==='Casalinga' ? '20 min' : diff==='Cuoco' ? '35 min' : '55 min'; }
+function buildRecipeFromMeal(meal, piattoKey){
+  const ingredients = classifyMealIngredients(meal);
+  const diff = estimateDifficulty(ingredients.length);
+  const steps = (meal.strInstructions||'')
+    .split(/\r?\n+/).map(s=>s.trim()).filter(Boolean);
+  const id = 'md-' + meal.idMeal;
+  const recipe = {
+    id, title: meal.strMeal, img: meal.strMealThumb, piatto: piattoKey || 'unico',
+    time: estimateTime(diff), diff, pers: 2,
+    steps: steps.length ? steps : [(meal.strInstructions||'Istruzioni non disponibili.')],
+    ingredients, source: meal.strSource || meal.strYoutube || null, live:true
+  };
+  RECIPE_CACHE[id] = recipe;
+  return recipe;
+}
+const RECIPE_CACHE = {};
+
 const DEFAULT_AVAILABILITY = {
   'Pollo':true,'Macinato di manzo':false,'Prosciutto crudo':true,'Pancetta':true,
   'Tonno in scatola':true,'Vongole':false,
@@ -647,7 +722,7 @@ const RECIPES = [
     ingredients:[{n:'Pollo', t:'ind'}, {n:'Curry in polvere', t:'ind'}, {n:'Latte', t:'ind'}, {n:'Cipolla', t:'sos'}, {n:'Riso', t:'sos'}]
   }
 ];
-function recipeById(id){ return RECIPES.find(r=>r.id===id); }
+function recipeById(id){ return RECIPE_CACHE[id] || RECIPES.find(r=>r.id===id); }
 
 const PIATTI = [
   {k:'antipasto', e:'🥗', l:'Antipasto'}, {k:'primo', e:'🍝', l:'Primo'},
@@ -685,12 +760,12 @@ function pctColorHex(p){ return p>=85?'#00E29A': p>=50?'#FFD166':'#FF3D3D'; }
 function computeFeasibility(recipe){
   const ind = recipe.ingredients.filter(i=>i.t==='ind');
   const sos = recipe.ingredients.filter(i=>i.t==='sos');
-  const indHave = ind.filter(i=>haveIngredient(i.n)).length;
-  const sosHave = sos.filter(i=>haveIngredient(i.n)).length;
+  const indHave = ind.filter(i=>ingredientAvailable(i)).length;
+  const sosHave = sos.filter(i=>ingredientAvailable(i)).length;
   const score = indHave*3 + sosHave*1;
   const max = ind.length*3 + sos.length*1;
   const pct = max>0 ? Math.round(score/max*100) : 100;
-  const missing = recipe.ingredients.filter(i=>!haveIngredient(i.n));
+  const missing = recipe.ingredients.filter(i=>!ingredientAvailable(i));
   const indComplete = indHave === ind.length; // nessun ingrediente principale mancante
   return { pct, missing, indComplete };
 }
@@ -722,9 +797,25 @@ function refreshHomeBadges(){
   const wb = document.getElementById('homeWaitingBanner');
   if(STATE.waiting.length>0){
     wb.style.display='flex';
-    const readyCount = STATE.waiting.filter(id=>computeFeasibility(recipeById(id)).pct===100).length;
+    const readyCount = STATE.waiting.filter(id=>{ const r=recipeById(id); return r && computeFeasibility(r).pct===100; }).length;
     document.getElementById('homeWaitingSub').textContent = readyCount>0 ? `${readyCount} pronta da cucinare! 🎉` : 'fai la spesa per poterla cucinare';
   } else { wb.style.display='none'; }
+  ensureCached([...STATE.waiting, ...STATE.favorites]).then(changed=>{ if(changed) refreshHomeBadges(); });
+}
+// Ricarica dalla cache (o da TheMealDB, se l'id è "md-...") le ricette salvate ma non ancora in memoria — utile dopo un ricaricamento della pagina.
+async function ensureCached(ids){
+  let changed = false;
+  for(const id of ids){
+    if(recipeById(id)) continue;
+    if(id.startsWith('md-')){
+      try{
+        const mealId = id.replace('md-','');
+        const meal = await mealDbLookup(mealId);
+        if(meal){ buildRecipeFromMeal(meal); changed = true; }
+      }catch(e){ /* offline o rete non disponibile: verrà ritentato al prossimo giro */ }
+    }
+  }
+  return changed;
 }
 
 /* ================= CTC (Con quello che c'è) ================= */
@@ -752,18 +843,11 @@ function pickDiff(k){ selDiff=k; renderDiff(); }
 function renderPersone(){
   document.getElementById('personeRow').innerHTML = PERSONE.map(n=>`<div class="chip-persone glass" onclick="avviaRicerca(${n})">${n}</div>`).join('');
 }
-function poolForCTC(){
+function poolForCTC(candidates){
   // Regola: una ricetta entra in "Con quello che c'è" solo se non manca nessun
   // ingrediente principale ED è fattibile almeno all'80%.
-  let list = RECIPES.map(r=>({r, f:computeFeasibility(r)})).filter(x=> x.f.indComplete && x.f.pct>=80);
-  if(selPiatto && selPiatto!=='sorpresa'){
-    const matched = list.filter(x=>x.r.piatto===selPiatto);
-    const others = list.filter(x=>x.r.piatto!==selPiatto);
-    matched.sort((a,b)=>b.f.pct-a.f.pct); others.sort((a,b)=>b.f.pct-a.f.pct);
-    list = matched.concat(others);
-  } else {
-    list.sort((a,b)=>b.f.pct-a.f.pct);
-  }
+  let list = candidates.map(r=>({r, f:computeFeasibility(r)})).filter(x=> x.f.indComplete && x.f.pct>=80);
+  list.sort((a,b)=>b.f.pct-a.f.pct);
   return list;
 }
 function nextBatch(pool, want){
@@ -773,18 +857,51 @@ function nextBatch(pool, want){
   picked.forEach(x=>usedIds.add(x.r.id));
   return picked.map(x=>x.r);
 }
-function avviaRicerca(n){
+// Va a TheMealDB e recupera un gruppo di ricette candidate per il piatto scelto in "Con quello che c'è".
+async function fetchCandidatesCTC(){
+  try{
+    let meals = [];
+    if(!selPiatto || selPiatto==='sorpresa'){
+      const picks = await Promise.all(Array.from({length:8}, ()=>mealDbRandom()));
+      meals = picks.filter(Boolean);
+    } else {
+      let cat = MEALDB_CATEGORY_MAP[selPiatto];
+      if(cat===null) cat = MEALDB_MEAT_CATS[Math.floor(Math.random()*MEALDB_MEAT_CATS.length)];
+      const list = await mealDbFilterByCategory(cat);
+      if(list.length===0) throw new Error('categoria vuota');
+      const shuffled = list.slice().sort(()=>Math.random()-0.5).slice(0,10);
+      const looked = await Promise.all(shuffled.map(m=>mealDbLookup(m.idMeal)));
+      meals = looked.filter(Boolean);
+    }
+    if(meals.length===0) throw new Error('nessun risultato');
+    return meals.map(m=>buildRecipeFromMeal(m, selPiatto));
+  }catch(e){
+    toast('connessione a TheMealDB non riuscita — mostro ricette dimostrative offline');
+    return RECIPES.slice();
+  }
+}
+function showResultsLoading(){
+  document.getElementById('searchCounter').textContent = lastMode==='ctc' ? `Ricerca ${searchCount} di 3` : `Proposta ${searchCount}`;
+  document.getElementById('resultsList').innerHTML = '<div class="empty-state">🌐 Cerco ricette su internet…</div>';
+  document.getElementById('btnAltre').style.display='none';
+  document.getElementById('cipensoBanner').style.display='none';
+}
+async function avviaRicerca(n){
   document.getElementById('resultsBackBtn').setAttribute('onclick', "goto('screen-filters')");
   searchCount = 1; usedIds = new Set();
-  currentBatch = nextBatch(poolForCTC(), 3);
   document.getElementById('filterSummary').textContent = `${n} persone`;
   document.getElementById('btnAltre').textContent = '🔄 Altre 3 ricette';
-  renderResults();
   goto('screen-results');
+  showResultsLoading();
+  const candidates = await fetchCandidatesCTC();
+  currentBatch = nextBatch(poolForCTC(candidates), 3);
+  renderResults();
 }
-function altreRicette(){
+async function altreRicette(){
   searchCount++;
-  const pool = lastMode==='ctc' ? poolForCTC() : poolForHVD();
+  showResultsLoading();
+  const candidates = lastMode==='ctc' ? await fetchCandidatesCTC() : await fetchCandidatesHVD();
+  const pool = lastMode==='ctc' ? poolForCTC(candidates) : poolForHVD(candidates);
   currentBatch = nextBatch(pool, 3);
   renderResults();
   document.getElementById('screen-results').querySelector('.scroll').scrollTop = 0;
@@ -803,24 +920,44 @@ function startHVD(){
   goto('screen-hvd');
 }
 function pickHvdPiatto(k){ hvdPiatto=k; hvdQuery=''; document.getElementById('hvdSearchInput').value=''; searchHVD(true); }
-function poolForHVD(){
-  let list = RECIPES.map(r=>({r, f:computeFeasibility(r)}));
-  if(hvdQuery){ list = list.filter(x=>x.r.title.toLowerCase().includes(hvdQuery.toLowerCase())); }
-  else if(hvdPiatto){ list = list.filter(x=>x.r.piatto===hvdPiatto); }
+function poolForHVD(candidates){
+  let list = candidates.map(r=>({r, f:computeFeasibility(r)}));
   list.sort((a,b)=>b.f.pct-a.f.pct);
   return list;
 }
-function searchHVD(fromChip){
+// Va a TheMealDB: ricerca per nome (search.php) o, se hai scelto un tipo di piatto, per categoria.
+async function fetchCandidatesHVD(){
+  try{
+    let meals = [];
+    if(hvdQuery){
+      meals = await mealDbSearchByName(hvdQuery);
+    } else if(hvdPiatto){
+      let cat = MEALDB_CATEGORY_MAP[hvdPiatto];
+      if(cat===null) cat = MEALDB_MEAT_CATS[Math.floor(Math.random()*MEALDB_MEAT_CATS.length)];
+      const list = await mealDbFilterByCategory(cat);
+      const shuffled = list.slice().sort(()=>Math.random()-0.5).slice(0,10);
+      const looked = await Promise.all(shuffled.map(m=>mealDbLookup(m.idMeal)));
+      meals = looked.filter(Boolean);
+    }
+    return meals.map(m=>buildRecipeFromMeal(m, hvdPiatto));
+  }catch(e){
+    toast('connessione a TheMealDB non riuscita — mostro ricette dimostrative offline');
+    return RECIPES.filter(r=> hvdQuery ? r.title.toLowerCase().includes(hvdQuery.toLowerCase()) : (!hvdPiatto || r.piatto===hvdPiatto));
+  }
+}
+async function searchHVD(fromChip){
   if(!fromChip){ hvdQuery = document.getElementById('hvdSearchInput').value.trim(); hvdPiatto=null; }
+  if(!hvdQuery && !hvdPiatto){ toast('scrivi un nome o scegli un tipo di piatto'); return; }
   document.getElementById('resultsBackBtn').setAttribute('onclick', "goto('screen-hvd')");
   searchCount = 1; usedIds = new Set();
-  const pool = poolForHVD();
-  if(pool.length===0){ toast('nessuna ricetta trovata con questo nome'); return; }
-  currentBatch = nextBatch(pool, 3);
   document.getElementById('filterSummary').textContent = hvdQuery ? `"${hvdQuery}"` : (PIATTI.find(p=>p.k===hvdPiatto)?.l || '');
   document.getElementById('btnAltre').textContent = '🔄 Altre proposte';
-  renderResults();
   goto('screen-results');
+  showResultsLoading();
+  const candidates = await fetchCandidatesHVD();
+  if(candidates.length===0){ currentBatch=[]; renderResults(); toast('nessuna ricetta trovata con questo nome'); return; }
+  currentBatch = nextBatch(poolForHVD(candidates), 3);
+  renderResults();
 }
 
 /* ================= RESULTS ================= */
@@ -841,7 +978,7 @@ function renderResults(){
       <div class="recipe-card glass ${col}">
         <div class="recipe-img"><img src="${r.img}" alt="${r.title}" loading="lazy"><div class="fatt-ring ${col}">${f.pct}%</div></div>
         <div class="recipe-body">
-          <div class="recipe-title">${r.title}</div>
+          <div class="recipe-title">${r.title}${r.live?' <span style="font-size:11px; opacity:.7;">🌐</span>':''}</div>
           <div class="recipe-meta"><span>⏱ ${r.time}</span><span>📶 ${r.diff}</span><span>👥 ${r.pers}</span></div>
           ${missing.length? `<div class="missing-list">${missing.map(m=>`<span class="missing-chip ${m.t}">${m.t==='ind'?'🔒':'🔄'} ${m.n}</span>`).join('')}</div>` : `<div class="missing-list"><span class="missing-chip sos">✅ hai tutto</span></div>`}
           <div class="recipe-actions">
@@ -860,14 +997,18 @@ function renderResults(){
 /* ================= DETTAGLIO ================= */
 let currentDetailId = null;
 let detailReturnScreen = 'screen-results';
-function openDetail(id, fromScreen){
+async function openDetail(id, fromScreen){
   currentDetailId = id;
   detailReturnScreen = fromScreen || 'screen-results';
-  const r = recipeById(id);
+  let r = recipeById(id);
+  if(!r){ toast('carico la ricetta…'); await ensureCached([id]); r = recipeById(id); }
+  if(!r){ toast('ricetta non disponibile — controlla la connessione'); return; }
   const f = computeFeasibility(r);
   document.getElementById('detailHero').innerHTML = `<img src="${r.img}" alt="${r.title}">`;
-  document.getElementById('detailBadgeCat').textContent = (PIATTI.find(p=>p.k===r.piatto)?.l || r.piatto) + (lastMode==='hvd' ? ' · ho voglia di' : ' · con quello che c\'è');
+  document.getElementById('detailBadgeCat').textContent = (PIATTI.find(p=>p.k===r.piatto)?.l || r.piatto) + (lastMode==='hvd' ? ' · ho voglia di' : ' · con quello che c\'è') + (r.live ? ' · 🌐 themealdb' : '');
   document.getElementById('detailTitle').textContent = r.title;
+  const srcWrap = document.getElementById('detailSourceLink');
+  srcWrap.innerHTML = r.source ? `<a href="${r.source}" target="_blank" rel="noopener" style="color:var(--green1); font-size:12.5px; font-weight:800; text-decoration:underline;">🔗 Ricetta originale</a>` : '';
   document.getElementById('detailPct').textContent = f.pct+'%';
   document.getElementById('detailPct').style.color = pctColorHex(f.pct);
   const bar = document.getElementById('detailBar');
@@ -879,7 +1020,7 @@ function openDetail(id, fromScreen){
   if(!f.indComplete){ cookBtn.disabled = true; cookBtn.title = 'Manca un ingrediente principale — fai prima la spesa'; }
   else { cookBtn.disabled = false; cookBtn.title=''; }
   document.getElementById('detailIngredients').innerHTML = r.ingredients.map(ing=>{
-    const have = haveIngredient(ing.n);
+    const have = ingredientAvailable(ing);
     return `<div class="ingredient-row"><span class="status">${have?'✅':(ing.t==='ind'?'🔒':'🔄')}</span><span class="nm">${ing.n}</span><span class="tag ${ing.t}">${ing.t==='ind'?'indispensabile':'sostituibile'}</span></div>`;
   }).join('');
   document.getElementById('detailSteps').innerHTML = r.steps.map((s,idx)=>`
@@ -890,9 +1031,11 @@ function goBackFromDetail(){ goto(detailReturnScreen); if(detailReturnScreen==='
 
 /* ================= CUCINO QUESTO (conferma tutto/parziale) ================= */
 let cookDraft = {};
-function openCookConfirm(id){
+async function openCookConfirm(id){
   currentDetailId = id;
-  const r = recipeById(id);
+  let r = recipeById(id);
+  if(!r){ toast('carico la ricetta…'); await ensureCached([id]); r = recipeById(id); }
+  if(!r){ toast('ricetta non disponibile — controlla la connessione'); return; }
   cookDraft = {};
   r.ingredients.forEach(ing=>{ cookDraft[ing.n] = 'tutto'; });
   renderCookList();
@@ -901,7 +1044,7 @@ function openCookConfirm(id){
 function renderCookList(){
   const r = recipeById(currentDetailId);
   document.getElementById('cookList').innerHTML = r.ingredients.map(ing=>{
-    const have = haveIngredient(ing.n);
+    const have = ingredientAvailable(ing);
     const mode = cookDraft[ing.n];
     return `
     <div class="sel-row">
@@ -914,10 +1057,18 @@ function renderCookList(){
   }).join('');
 }
 function setCookMode(name, mode){ cookDraft[name] = mode; renderCookList(); }
+// Per gli ingredienti in inglese (TheMealDB) risaliamo al/ai prodotto/i del catalogo italiano corrispondenti, via le parole chiave di PANTRY_EN.
+function matchedCatalogNames(ingName, lang){
+  if(lang!=='en') return CATALOG_NAMES.has(ingName) ? [ingName] : [];
+  const lname = ingName.toLowerCase();
+  return Object.entries(PANTRY_EN).filter(([it,kws])=>kws.some(k=>lname.includes(k))).map(([it])=>it);
+}
 function confirmCook(){
+  const r = recipeById(currentDetailId);
   Object.keys(cookDraft).forEach(name=>{
-    if(!CATALOG_NAMES.has(name)) return;
-    if(cookDraft[name]==='tutto'){ STATE.pantry[name] = false; }
+    if(cookDraft[name]!=='tutto') return;
+    const ing = r.ingredients.find(i=>i.n===name);
+    matchedCatalogNames(name, ing ? ing.lang : 'it').forEach(catName=>{ STATE.pantry[catName] = false; });
   });
   STATE.waiting = STATE.waiting.filter(id=>id!==currentDetailId);
   STATE.favorites = STATE.favorites.filter(id=>id!==currentDetailId);
@@ -927,14 +1078,16 @@ function confirmCook(){
 }
 
 /* ================= SALVA IN ATTESA / PREFERITI ================= */
-function saveWaiting(id){
+async function saveWaiting(id){
   if(!STATE.waiting.includes(id)) STATE.waiting.push(id);
-  const r = recipeById(id);
+  let r = recipeById(id);
+  if(!r){ await ensureCached([id]); r = recipeById(id); }
+  if(!r){ toast('ricetta non disponibile — controlla la connessione'); return; }
   const f = computeFeasibility(r);
   f.missing.forEach(ing=>{
-    if(CATALOG_NAMES.has(ing.n) && !STATE.shoppingList.find(s=>s.name===ing.n)){
-      STATE.shoppingList.push({name: ing.n, got:false});
-    }
+    matchedCatalogNames(ing.n, ing.lang).forEach(catName=>{
+      if(!STATE.shoppingList.find(s=>s.name===catName)) STATE.shoppingList.push({name: catName, got:false});
+    });
   });
   saveState();
   refreshHomeBadges();
@@ -957,15 +1110,21 @@ function setApTab(tab){
   document.getElementById('tabPrefBtn').classList.toggle('on', tab==='preferiti');
   renderApList();
 }
-function renderApList(){
+async function renderApList(){
   const ids = apTab==='attesa' ? STATE.waiting : STATE.favorites;
   const wrap = document.getElementById('apList');
   if(ids.length===0){
     wrap.innerHTML = `<div class="empty-state">${apTab==='attesa' ? 'Nessuna ricetta in attesa.<br>Salvane una dai risultati di ricerca.' : 'Nessun preferito ancora.<br>Salva una ricetta per ritrovarla qui.'}</div>`;
     return;
   }
-  wrap.innerHTML = ids.map(id=>{
-    const r = recipeById(id); const f = computeFeasibility(r); const col = pctColor(f.pct);
+  if(ids.some(id=>!recipeById(id))){
+    wrap.innerHTML = `<div class="empty-state">🌐 Carico le ricette…</div>`;
+    await ensureCached(ids);
+  }
+  const rows = ids.map(id=>{
+    const r = recipeById(id);
+    if(!r) return `<div class="empty-state" style="padding:20px;">⚠️ Ricetta non disponibile offline — riprova con la connessione attiva.</div>`;
+    const f = computeFeasibility(r); const col = pctColor(f.pct);
     return `
     <div class="recipe-card glass ${col}">
       <div class="recipe-img"><img src="${r.img}" alt="${r.title}" loading="lazy"><div class="fatt-ring ${col}">${f.pct}%</div></div>
@@ -979,7 +1138,8 @@ function renderApList(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  });
+  wrap.innerHTML = rows.join('');
 }
 function removeFromAp(id){
   if(apTab==='attesa'){ STATE.waiting = STATE.waiting.filter(x=>x!==id); }
