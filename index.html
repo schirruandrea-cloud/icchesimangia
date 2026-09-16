@@ -618,15 +618,16 @@ const MEALDB_CATEGORY_MAP = {
   dolce: 'Dessert', unico: 'Miscellaneous', contorno: 'Side', sorpresa: null
 };
 const MEALDB_MEAT_CATS = ['Chicken','Beef','Pork','Lamb','Seafood','Goat'];
-// Parole che classifichiamo sempre come "sostituibile" (condimenti/base), a prescindere dalla posizione.
-const SEASONING_WORDS = ['salt','pepper','water','sugar','oil'];
+// Parole che classifichiamo sempre come "sostituibile" (condimenti, aromi, basi comuni) — anche se compaiono
+// all'inizio della lista ingredienti, non bloccano una ricetta solo perché mancano.
+const SEASONING_WORDS = ['salt','pepper','water','sugar','oil','garlic','onion','parsley','basil','chilli','chili','herb','spice','stock','bouillon','vinegar','leaves'];
 // Dizionario IT (nome catalogo) -> parole chiave EN, per riconoscere gli ingredienti reali (in inglese) nella dispensa italiana.
 const PANTRY_EN = {
   'Pollo':['chicken'], 'Macinato di manzo':['beef mince','ground beef','minced beef'], 'Prosciutto crudo':['prosciutto','ham'], 'Pancetta':['bacon','pancetta'],
   'Tonno in scatola':['tuna'], 'Vongole':['clam'],
   'Parmigiano Reggiano':['parmesan','parmigiano'], 'Mozzarella':['mozzarella'], 'Uova':['egg'], 'Burro':['butter'], 'Latte':['milk'],
   'Pomodori':['tomato'], 'Cipolla':['onion'], 'Aglio':['garlic'], 'Zucchine':['zucchini','courgette'], 'Basilico':['basil'], 'Funghi':['mushroom'], 'Prezzemolo':['parsley'],
-  'Passata di pomodoro':['passata','tomato puree','tomato sauce','chopped tomato'], 'Fagioli':['beans'],
+  'Passata di pomodoro':['passata','tomato puree','tomato sauce','chopped tomato','tomato'], 'Fagioli':['beans'],
   'Spaghetti':['spaghetti'], 'Riso':['rice'], 'Farina':['flour'], 'Pasta corta':['pasta','penne','fusilli','macaroni'],
   'Olio EVO':['olive oil','oil'], 'Sale':['salt'], 'Pepe nero':['pepper'], 'Peperoncino':['chilli','chili','pepper flakes'], 'Curry in polvere':['curry'],
   'Pane':['bread']
@@ -644,9 +645,37 @@ async function mealDbFetch(path){
   return res.json();
 }
 async function mealDbFilterByCategory(cat){ const d = await mealDbFetch('filter.php?c='+encodeURIComponent(cat)); return d.meals||[]; }
+async function mealDbFilterByIngredient(slug){ const d = await mealDbFetch('filter.php?i='+encodeURIComponent(slug)); return d.meals||[]; }
 async function mealDbLookup(id){ const d = await mealDbFetch('lookup.php?i='+encodeURIComponent(id)); return d.meals ? d.meals[0] : null; }
 async function mealDbRandom(){ const d = await mealDbFetch('random.php'); return d.meals ? d.meals[0] : null; }
 async function mealDbSearchByName(name){ const d = await mealDbFetch('search.php?s='+encodeURIComponent(name)); return d.meals||[]; }
+
+// Prodotti del catalogo con un corrispettivo diretto tra gli ingredienti "filtrabili" di TheMealDB.
+// Usati per orientare la ricerca su ciò che hai DAVVERO in dispensa, invece di pescare a caso dalla categoria.
+const MEALDB_INGREDIENT_SLUGS = {
+  'Pollo':'chicken', 'Uova':'eggs', 'Spaghetti':'spaghetti', 'Riso':'rice', 'Tonno in scatola':'tuna',
+  'Funghi':'mushrooms', 'Aglio':'garlic', 'Cipolla':'onions', 'Passata di pomodoro':'tomatoes',
+  'Parmigiano Reggiano':'parmesan cheese', 'Mozzarella':'mozzarella cheese', 'Farina':'flour', 'Fagioli':'beans',
+  'Pomodori':'tomatoes', 'Zucchine':'courgette', 'Latte':'milk', 'Burro':'butter'
+};
+function availablePantrySlugs(){
+  return [...new Set(Object.entries(MEALDB_INGREDIENT_SLUGS).filter(([it])=>STATE.pantry[it]).map(([,slug])=>slug))];
+}
+// Recupera una lista di ricette candidate combinando: 1) una categoria TheMealDB, 2) un ingrediente che hai
+// davvero in dispensa (quando disponibile) — così la ricerca è ancorata a ciò che hai, non solo casuale.
+async function mealDbCandidatesForCategory(cat){
+  const catMeals = await mealDbFilterByCategory(cat);
+  const slugs = availablePantrySlugs();
+  let ingredientMeals = [];
+  if(slugs.length){
+    const slug = slugs[Math.floor(Math.random()*slugs.length)];
+    try{ ingredientMeals = await mealDbFilterByIngredient(slug); }catch(e){ /* ignora, si usa solo la categoria */ }
+  }
+  const seen = new Set(); const merged = [];
+  ingredientMeals.forEach(m=>{ if(!seen.has(m.idMeal)){ seen.add(m.idMeal); merged.push(m); } }); // priorità a chi ha già un match reale
+  catMeals.forEach(m=>{ if(!seen.has(m.idMeal)){ seen.add(m.idMeal); merged.push(m); } });
+  return merged.slice(0, 16);
+}
 
 function classifyMealIngredients(meal){
   const raw = [];
@@ -657,7 +686,7 @@ function classifyMealIngredients(meal){
   const nonSeason = raw.filter(n=> !SEASONING_WORDS.some(w=>n.toLowerCase().includes(w)));
   const season = raw.filter(n=> SEASONING_WORDS.some(w=>n.toLowerCase().includes(w)));
   return [
-    ...nonSeason.map((n,i)=>({ n, t: i<4 ? 'ind':'sos', lang:'en' })),
+    ...nonSeason.map((n,i)=>({ n, t: i<3 ? 'ind':'sos', lang:'en' })),
     ...season.map(n=>({ n, t:'sos', lang:'en' }))
   ];
 }
@@ -867,10 +896,9 @@ async function fetchCandidatesCTC(){
     } else {
       let cat = MEALDB_CATEGORY_MAP[selPiatto];
       if(cat===null) cat = MEALDB_MEAT_CATS[Math.floor(Math.random()*MEALDB_MEAT_CATS.length)];
-      const list = await mealDbFilterByCategory(cat);
-      if(list.length===0) throw new Error('categoria vuota');
-      const shuffled = list.slice().sort(()=>Math.random()-0.5).slice(0,10);
-      const looked = await Promise.all(shuffled.map(m=>mealDbLookup(m.idMeal)));
+      const candidates = await mealDbCandidatesForCategory(cat);
+      if(candidates.length===0) throw new Error('categoria vuota');
+      const looked = await Promise.all(candidates.map(m=>mealDbLookup(m.idMeal)));
       meals = looked.filter(Boolean);
     }
     if(meals.length===0) throw new Error('nessun risultato');
@@ -934,9 +962,8 @@ async function fetchCandidatesHVD(){
     } else if(hvdPiatto){
       let cat = MEALDB_CATEGORY_MAP[hvdPiatto];
       if(cat===null) cat = MEALDB_MEAT_CATS[Math.floor(Math.random()*MEALDB_MEAT_CATS.length)];
-      const list = await mealDbFilterByCategory(cat);
-      const shuffled = list.slice().sort(()=>Math.random()-0.5).slice(0,10);
-      const looked = await Promise.all(shuffled.map(m=>mealDbLookup(m.idMeal)));
+      const candidates = await mealDbCandidatesForCategory(cat);
+      const looked = await Promise.all(candidates.map(m=>mealDbLookup(m.idMeal)));
       meals = looked.filter(Boolean);
     }
     return meals.map(m=>buildRecipeFromMeal(m, hvdPiatto));
