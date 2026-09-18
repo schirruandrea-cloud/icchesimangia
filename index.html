@@ -654,9 +654,10 @@ async function mealDbSearchByName(name){ const d = await mealDbFetch('search.php
 // Usati per orientare la ricerca su ciò che hai DAVVERO in dispensa, invece di pescare a caso dalla categoria.
 const MEALDB_INGREDIENT_SLUGS = {
   'Pollo':'chicken', 'Uova':'eggs', 'Spaghetti':'spaghetti', 'Riso':'rice', 'Tonno in scatola':'tuna',
-  'Funghi':'mushrooms', 'Aglio':'garlic', 'Cipolla':'onions', 'Passata di pomodoro':'tomatoes',
-  'Parmigiano Reggiano':'parmesan cheese', 'Mozzarella':'mozzarella cheese', 'Farina':'flour', 'Fagioli':'beans',
-  'Pomodori':'tomatoes', 'Zucchine':'courgette', 'Latte':'milk', 'Burro':'butter'
+  'Funghi':'mushrooms', 'Aglio':'garlic', 'Cipolla':'onions', 'Passata di pomodoro':'passata',
+  'Parmigiano Reggiano':'parmesan', 'Mozzarella':'mozzarella', 'Farina':'flour', 'Fagioli':'cannellini beans',
+  'Pomodori':'tomatoes', 'Zucchine':'zucchini', 'Latte':'milk', 'Burro':'butter', 'Pancetta':'bacon',
+  'Prosciutto crudo':'prosciutto', 'Macinato di manzo':'minced beef', 'Pane':'bread'
 };
 function availablePantrySlugs(){
   return [...new Set(Object.entries(MEALDB_INGREDIENT_SLUGS).filter(([it])=>STATE.pantry[it]).map(([,slug])=>slug))];
